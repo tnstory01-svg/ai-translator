@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: ai-translator
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn web_app:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: AI_PROVIDER
+        value: auto
+      - key: AI_API_KEY
+        sync: false
+      - key: AI_MODEL
+        sync: false
+      - key: AI_BASE_URL
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: APP_PASSWORD
+        sync: false
+      - key: SAVE_HISTORY
+        value: "true"
+      - key: TRANSLATION_DB_PATH
+        value: data/history.sqlite3

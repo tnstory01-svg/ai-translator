@@ -16,15 +16,35 @@
 - **실시간 스트리밍** — 응답을 토큰 단위로 즉시 표시
 - **프롬프트 캐싱 적용** — 시스템 프롬프트가 안정적이라 두 번째 요청부터 캐시 적중 (입력 토큰 비용 약 90% 절감)
 - **API 키 보호** — `.env`로 분리, `.gitignore`로 커밋 차단
+- **HTML 배포 버전** — FastAPI 백엔드가 API 키를 서버 환경변수로만 읽고, 브라우저에는 키를 노출하지 않음
+- **접속 비밀번호** — `APP_PASSWORD`를 설정하면 공개 URL에서도 비밀번호 입력 후 사용
+- **번역 히스토리** — SQLite에 최근 번역 기록 저장, 화면에서 다시 열기/전체 삭제 지원
+- **멀티 Provider** — Anthropic, OpenAI, Gemini, OpenAI 호환 API 서버 선택 지원
 
 ## 기술 스택
 
 - Python 3.13
-- [Anthropic Python SDK](https://github.com/anthropics/anthropic-sdk-python) (`claude-sonnet-4-6`)
+- [Anthropic Python SDK](https://github.com/anthropics/anthropic-sdk-python)
+- OpenAI Chat Completions 호환 REST API (`httpx`)
 - Streamlit
+- FastAPI / Uvicorn
 - python-dotenv
 
 ## 실행 방법
+
+### PowerShell 없이 실행
+
+Windows에서 터미널 명령을 직접 치지 않고 쓰려면 아래 파일을 더블클릭하세요.
+
+1. 최초 1회: `setup_ai_translator.cmd`
+2. `.env` 파일에 API 키 입력
+3. 평소 실행: `start_ai_translator.cmd`
+
+`start_ai_translator.cmd`를 실행하면 CMD 창이 열리고 브라우저가 자동으로 http://127.0.0.1:8000 을 엽니다. 앱을 쓰는 동안 CMD 창은 닫지 마세요. 종료하려면 그 창에서 `Ctrl + C`를 누릅니다.
+
+브라우저에서 HTML만 단독으로 더블클릭하는 방식은 지원하지 않습니다. API 키를 브라우저에 넣으면 키가 노출되므로, 번역 요청은 반드시 `web_app.py` 서버를 거쳐야 합니다.
+
+로컬 실행 중에는 화면의 `API 설정` 버튼으로 API 키를 입력해 `.env`에 저장할 수 있습니다. 이 저장 기능은 기본적으로 `127.0.0.1` / `localhost`에서 접속했을 때만 동작합니다.
 
 ### 1. 클론 + 가상환경
 
@@ -39,22 +59,116 @@ pip install -r requirements.txt
 
 ### 2. API 키 설정
 
-[Anthropic Console](https://console.anthropic.com/)에서 API 키 발급 후:
+사용할 AI 제공사의 API 키를 발급한 뒤:
 
 ```bash
 cp .env.example .env
-# .env 파일을 열어 ANTHROPIC_API_KEY=sk-ant-... 입력
+# .env 파일을 열어 AI_PROVIDER / AI_API_KEY / AI_MODEL 입력
 ```
 
-또는 앱 사이드바에 직접 입력해도 됩니다.
+HTML + FastAPI 앱을 공개 배포할 경우 `.env` 또는 배포 플랫폼 환경변수에 `APP_PASSWORD`도 설정하세요.
+
+#### Anthropic
+
+```env
+AI_PROVIDER=auto
+AI_API_KEY=sk-ant-...
+AI_MODEL=claude-sonnet-4-6
+```
+
+#### OpenAI
+
+```env
+AI_PROVIDER=openai
+AI_API_KEY=sk-...
+AI_MODEL=gpt-4o
+```
+
+#### Gemini
+
+Gemini는 Google의 OpenAI 호환 엔드포인트를 사용합니다.
+
+```env
+AI_PROVIDER=gemini
+AI_API_KEY=AIza...
+AI_MODEL=gemini-2.5-flash
+```
+
+#### OpenAI 호환 API 서버
+
+OpenRouter, Together, 자체 vLLM 서버처럼 `/chat/completions`를 지원하는 서버는 아래처럼 설정합니다.
+
+```env
+AI_PROVIDER=openai-compatible
+AI_API_KEY=제공사_API키
+AI_BASE_URL=https://example.com/v1
+AI_MODEL=제공사_모델명
+```
 
 ### 3. 실행
+
+#### Streamlit 로컬 앱
+
+Streamlit 버전(`app.py`)은 기존 Anthropic 전용 데모입니다. 멀티 Provider와 배포 기능은 아래 HTML + FastAPI 앱(`web_app.py`)에 적용되어 있습니다.
 
 ```bash
 streamlit run app.py
 ```
 
 브라우저가 자동으로 열리며 (기본: http://localhost:8501) 즉시 사용 가능합니다.
+
+#### HTML + FastAPI 앱
+
+```bash
+uvicorn web_app:app --host 127.0.0.1 --port 8000 --reload
+```
+
+기본 주소는 http://127.0.0.1:8000 입니다. 정적 HTML은 `/`에서 열리고, 번역 요청은 같은 서버의 `/api/translate`로 전달됩니다.
+
+### 환경변수
+
+| 변수 | 필수 | 설명 |
+| --- | --- | --- |
+| `AI_PROVIDER` | 예 | `auto`, `anthropic`, `openai`, `gemini`, `openai-compatible` 중 하나. 기본값은 `auto`입니다. |
+| `AI_API_KEY` | 예 | 선택한 제공사의 API 키. 제공사별 `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`도 지원합니다. |
+| `AI_MODEL` | 권장 | 사용할 모델명. 비워두면 Anthropic/OpenAI/Gemini는 기본 모델을 사용합니다. |
+| `AI_BASE_URL` | 호환 API만 필수 | OpenAI 호환 API 서버의 base URL. 예: `https://example.com/v1` |
+| `AI_MAX_TOKENS` | 아니오 | 출력 최대 토큰. 기본값은 `2048`입니다. |
+| `ALLOW_ENV_WRITE` | 아니오 | HTML에서 `.env` 저장을 허용할지 여부. 기본 동작은 localhost만 허용입니다. |
+| `APP_PASSWORD` | 배포 시 권장 | 접속 비밀번호. 비워두면 비밀번호 없이 앱이 열립니다. |
+| `SAVE_HISTORY` | 아니오 | `true`면 SQLite 히스토리를 저장합니다. 기본값은 `true`입니다. |
+| `TRANSLATION_DB_PATH` | 아니오 | SQLite 히스토리 파일 경로. 기본값은 `data/history.sqlite3`입니다. |
+
+## 배포 방법
+
+정적 HTML만 단독 배포하면 Anthropic API 키가 브라우저에 노출되므로 안전하지 않습니다. 배포 시에는 반드시 `web_app.py`를 함께 실행하는 Python 서버 형태로 배포하세요.
+
+### Render 배포
+
+저장소 루트에 `render.yaml`이 포함되어 있어 Render Blueprint로 바로 만들 수 있습니다. 수동으로 Web Service를 만들 경우 값은 아래처럼 입력합니다.
+
+- Build command: `pip install -r requirements.txt`
+- Start command: `uvicorn web_app:app --host 0.0.0.0 --port $PORT`
+- Environment variables:
+  - `AI_PROVIDER=anthropic` 또는 `openai`, `gemini`, `openai-compatible`
+  - `AI_API_KEY=...`
+  - `AI_MODEL=...`
+  - `AI_BASE_URL=...` (`openai-compatible`일 때)
+  - `APP_PASSWORD=원하는_접속_비밀번호`
+  - `SAVE_HISTORY=true`
+  - `TRANSLATION_DB_PATH=data/history.sqlite3`
+
+`AI_API_KEY`, `AI_MODEL`, `AI_BASE_URL`, `ANTHROPIC_API_KEY`, `APP_PASSWORD`는 `render.yaml`에 값을 하드코딩하지 않고 `sync: false`로 두었습니다. Render Dashboard에서 마지막에 직접 입력하세요.
+
+`Procfile`을 지원하는 플랫폼에서는 저장소를 연결한 뒤 환경변수만 추가하면 됩니다.
+
+### 운영 보안 메모
+
+- 공개 URL에는 반드시 `APP_PASSWORD`를 설정하세요.
+- API 키는 HTML이나 JavaScript에 넣지 마세요. 제공사가 바뀌어도 키는 서버 환경변수에만 넣습니다.
+- HTML의 `API 설정` 저장 기능은 로컬 보조 기능입니다. 공개 배포에서는 Render/Railway 같은 플랫폼의 환경변수 설정을 쓰는 편이 안전합니다.
+- 민감한 원문을 다루는 경우 `SAVE_HISTORY=false`로 히스토리 저장을 끌 수 있습니다.
+- Render 무료 플랜의 파일 시스템은 영구 저장소가 아닐 수 있습니다. 히스토리를 오래 보관하려면 유료 디스크 또는 외부 DB를 사용하세요.
 
 ## 시스템 프롬프트의 언어학적 근거
 
@@ -166,8 +280,8 @@ Firma       (서명)
 
 ## 개선 아이디어
 
-- [ ] 번역 히스토리 저장 (SQLite)
-- [ ] 번역 결과 대비 표시 (원문 vs 번역문 side-by-side)
+- [x] 번역 히스토리 저장 (SQLite)
+- [x] 번역 결과 대비 표시 (원문 vs 번역문 side-by-side)
 - [ ] 어조 슬라이더 (격식 ↔ 친근)
 - [ ] 다른 언어쌍 추가 (포르투갈어, 프랑스어 등)
 - [ ] Docker 컨테이너화

@@ -30,5 +30,11 @@ Thumbs.db
 .cache/
 .pytest_cache/
 
+# 로컬 데이터베이스 / 히스토리
+data/
+*.db
+*.sqlite
+*.sqlite3
+
 # Jupyter
 .ipynb_checkpoints/

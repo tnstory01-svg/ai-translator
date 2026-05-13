@@ -1,0 +1,984 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI Spanish Translator</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #eef1f5;
+        --sidebar: #16202a;
+        --sidebar-soft: #22303d;
+        --panel: #ffffff;
+        --panel-soft: #f7f9fc;
+        --text: #151a23;
+        --muted: #667085;
+        --line: #d7dde7;
+        --line-strong: #b9c2d0;
+        --accent: #136f63;
+        --accent-strong: #0a5148;
+        --accent-soft: #e6f3f1;
+        --danger: #b42318;
+        --warning: #a15c07;
+        --ok: #067647;
+        --shadow: 0 18px 44px rgba(16, 24, 40, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--bg);
+        color: var(--text);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+      }
+
+      button,
+      input,
+      textarea {
+        font: inherit;
+      }
+
+      button {
+        min-height: 38px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        color: var(--text);
+        padding: 0 13px;
+        font-size: 14px;
+        font-weight: 680;
+        cursor: pointer;
+      }
+
+      button:hover:not(:disabled) {
+        border-color: var(--line-strong);
+      }
+
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.55;
+      }
+
+      button.primary {
+        border-color: var(--accent);
+        background: var(--accent);
+        color: #ffffff;
+      }
+
+      button.primary:hover:not(:disabled) {
+        background: var(--accent-strong);
+      }
+
+      button.ghost {
+        background: transparent;
+      }
+
+      .app {
+        min-height: 100vh;
+        display: grid;
+        grid-template-columns: 300px minmax(0, 1fr);
+      }
+
+      .sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        padding: 22px;
+        background: var(--sidebar);
+        color: #f5f8fb;
+      }
+
+      .brand {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .brand-title {
+        margin: 0;
+        font-size: 22px;
+        line-height: 1.15;
+        font-weight: 780;
+        letter-spacing: 0;
+      }
+
+      .brand-subtitle {
+        color: #a9b6c4;
+        font-size: 13px;
+      }
+
+      .status {
+        display: grid;
+        gap: 7px;
+        padding: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 8px;
+        background: var(--sidebar-soft);
+      }
+
+      .status-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #d9e1ea;
+        font-size: 13px;
+      }
+
+      .dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--warning);
+      }
+
+      .status.ok .dot {
+        background: #32d583;
+      }
+
+      .status.error .dot {
+        background: #f97066;
+      }
+
+      .sidebar-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .sidebar button {
+        border-color: rgba(255, 255, 255, 0.16);
+        background: rgba(255, 255, 255, 0.08);
+        color: #f5f8fb;
+      }
+
+      .sidebar button:hover:not(:disabled) {
+        border-color: rgba(255, 255, 255, 0.32);
+      }
+
+      .history-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-top: 2px;
+      }
+
+      .history-title {
+        font-size: 13px;
+        font-weight: 740;
+        color: #d9e1ea;
+      }
+
+      .history-list {
+        display: grid;
+        gap: 8px;
+        overflow: auto;
+        min-height: 0;
+        padding-right: 2px;
+      }
+
+      .history-item {
+        width: 100%;
+        min-height: 76px;
+        display: grid;
+        gap: 6px;
+        text-align: left;
+        padding: 11px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.06);
+        color: #f5f8fb;
+      }
+
+      .history-item:hover {
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      .history-meta {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        color: #a9b6c4;
+        font-size: 12px;
+      }
+
+      .history-preview {
+        color: #eff4f8;
+        font-size: 13px;
+        line-height: 1.4;
+        word-break: break-word;
+      }
+
+      .empty-history {
+        padding: 12px;
+        color: #a9b6c4;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .workspace {
+        min-width: 0;
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr) auto;
+        padding: 22px;
+        gap: 16px;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        box-shadow: var(--shadow);
+      }
+
+      .mode {
+        display: inline-grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4px;
+        padding: 4px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #edf1f7;
+      }
+
+      .mode input {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .mode label {
+        min-width: 160px;
+        height: 34px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        color: var(--muted);
+        font-size: 14px;
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .mode input:checked + label {
+        background: var(--panel);
+        color: var(--text);
+        box-shadow: 0 1px 4px rgba(16, 24, 40, 0.13);
+      }
+
+      .actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .settings-panel {
+        display: grid;
+        grid-template-columns: 150px minmax(180px, 1fr) minmax(140px, 0.8fr) minmax(160px, 1fr) auto;
+        gap: 8px;
+        align-items: center;
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        box-shadow: var(--shadow);
+      }
+
+      .settings-panel select,
+      .settings-panel input {
+        width: 100%;
+        min-height: 38px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 0 10px;
+        background: #ffffff;
+        color: var(--text);
+        outline: none;
+      }
+
+      .settings-panel select:focus,
+      .settings-panel input:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px var(--accent-soft);
+      }
+
+      .editor-grid {
+        min-height: 0;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 16px;
+      }
+
+      .pane {
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+      }
+
+      .pane-head {
+        min-height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 0 14px;
+        border-bottom: 1px solid var(--line);
+        background: var(--panel-soft);
+      }
+
+      .pane-title {
+        font-size: 14px;
+        font-weight: 760;
+      }
+
+      .count,
+      .token-row {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      textarea,
+      .output {
+        width: 100%;
+        flex: 1;
+        min-height: 460px;
+        border: 0;
+        resize: none;
+        outline: none;
+        padding: 17px;
+        color: var(--text);
+        background: transparent;
+        font-size: 16px;
+        line-height: 1.66;
+      }
+
+      .output {
+        white-space: pre-wrap;
+        overflow: auto;
+      }
+
+      .message {
+        min-height: 24px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .message.error {
+        color: var(--danger);
+      }
+
+      .lock-screen {
+        position: fixed;
+        inset: 0;
+        z-index: 30;
+        display: grid;
+        place-items: center;
+        padding: 20px;
+        background: rgba(14, 23, 34, 0.72);
+        backdrop-filter: blur(6px);
+      }
+
+      .lock-panel {
+        width: min(420px, 100%);
+        display: grid;
+        gap: 14px;
+        padding: 22px;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        box-shadow: var(--shadow);
+      }
+
+      .lock-panel h2 {
+        margin: 0;
+        font-size: 21px;
+        letter-spacing: 0;
+      }
+
+      .lock-panel p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.5;
+      }
+
+      .lock-panel input {
+        width: 100%;
+        min-height: 42px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 0 12px;
+        outline: none;
+      }
+
+      .lock-panel input:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px var(--accent-soft);
+      }
+
+      [hidden] {
+        display: none !important;
+      }
+
+      @media (max-width: 1040px) {
+        .app {
+          grid-template-columns: 260px minmax(0, 1fr);
+        }
+
+        .editor-grid {
+          grid-template-columns: 1fr;
+        }
+
+        textarea,
+        .output {
+          min-height: 310px;
+        }
+      }
+
+      @media (max-width: 760px) {
+        .app {
+          grid-template-columns: 1fr;
+        }
+
+        .sidebar {
+          min-height: auto;
+          padding: 18px;
+        }
+
+        .history-list {
+          max-height: 230px;
+        }
+
+        .workspace {
+          padding: 14px;
+        }
+
+        .topbar,
+        .settings-panel,
+        .actions {
+          align-items: stretch;
+          flex-direction: column;
+        }
+
+        .settings-panel {
+          display: flex;
+        }
+
+        .mode,
+        .actions,
+        .actions button {
+          width: 100%;
+        }
+
+        .mode label {
+          min-width: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="lockScreen" class="lock-screen" hidden>
+      <form id="lockForm" class="lock-panel">
+        <h2>접속 비밀번호</h2>
+        <p>배포 환경에서 설정한 `APP_PASSWORD`를 입력하세요.</p>
+        <input
+          id="passwordInput"
+          type="password"
+          autocomplete="current-password"
+          placeholder="비밀번호"
+        />
+        <button class="primary" type="submit">접속</button>
+        <div id="lockMessage" class="message error"></div>
+      </form>
+    </div>
+
+    <div id="appRoot" class="app">
+      <aside class="sidebar">
+        <div class="brand">
+          <h1 class="brand-title">AI Spanish Translator</h1>
+          <div class="brand-subtitle">격식체와 비즈니스 이메일 번역</div>
+        </div>
+
+        <div id="status" class="status">
+          <div class="status-row">
+            <span class="dot"></span>
+            <span id="statusText">상태 확인 중</span>
+          </div>
+          <div id="modelText" class="status-row">모델 확인 중</div>
+        </div>
+
+        <div class="sidebar-actions">
+          <button id="newBtn" type="button">새 번역</button>
+          <button id="lockBtn" type="button" hidden>잠금</button>
+        </div>
+
+        <div class="history-header">
+          <div class="history-title">히스토리</div>
+          <button id="clearHistoryBtn" type="button">전체 삭제</button>
+        </div>
+        <div id="historyList" class="history-list">
+          <div class="empty-history">저장된 번역이 없습니다.</div>
+        </div>
+      </aside>
+
+      <section class="workspace">
+        <div class="topbar">
+          <div class="mode" role="radiogroup" aria-label="번역 모드">
+            <input id="formal" name="mode" type="radio" value="formal" checked />
+            <label for="formal">격식체</label>
+            <input id="business" name="mode" type="radio" value="business" />
+            <label for="business">비즈니스 이메일</label>
+          </div>
+          <div class="actions">
+            <button id="settingsToggleBtn" type="button">API 설정</button>
+            <button id="clearBtn" type="button">초기화</button>
+            <button id="copyBtn" type="button">복사</button>
+            <button id="translateBtn" class="primary" type="button">번역</button>
+          </div>
+        </div>
+
+        <form id="settingsPanel" class="settings-panel" hidden>
+          <select id="providerInput" aria-label="AI 제공사">
+            <option value="auto">자동 감지</option>
+            <option value="anthropic">Anthropic</option>
+            <option value="openai">OpenAI</option>
+            <option value="gemini">Gemini</option>
+            <option value="openai-compatible">OpenAI 호환</option>
+          </select>
+          <input id="apiKeyInput" type="password" placeholder="API 키" autocomplete="off" />
+          <input id="modelInput" type="text" placeholder="모델명" />
+          <input id="baseUrlInput" type="url" placeholder="Base URL (호환 API용)" />
+          <button id="saveSettingsBtn" class="primary" type="submit">저장</button>
+        </form>
+
+        <main class="editor-grid">
+          <section class="pane" aria-labelledby="sourceTitle">
+            <div class="pane-head">
+              <div id="sourceTitle" class="pane-title">원문</div>
+              <div id="charCount" class="count">0 / 12000</div>
+            </div>
+            <textarea
+              id="sourceText"
+              maxlength="12000"
+              placeholder="한국어 또는 영어 원문을 입력하세요."
+            ></textarea>
+          </section>
+
+          <section class="pane" aria-labelledby="resultTitle">
+            <div class="pane-head">
+              <div id="resultTitle" class="pane-title">번역 결과</div>
+              <div id="usage" class="token-row">토큰 정보 없음</div>
+            </div>
+            <div id="result" class="output" aria-live="polite"></div>
+          </section>
+        </main>
+
+        <div id="message" class="message" role="status"></div>
+      </section>
+    </div>
+
+    <script>
+      const AUTH_KEY = "ai-translator-password";
+      const sourceText = document.querySelector("#sourceText");
+      const translateBtn = document.querySelector("#translateBtn");
+      const settingsToggleBtn = document.querySelector("#settingsToggleBtn");
+      const settingsPanel = document.querySelector("#settingsPanel");
+      const providerInput = document.querySelector("#providerInput");
+      const apiKeyInput = document.querySelector("#apiKeyInput");
+      const modelInput = document.querySelector("#modelInput");
+      const baseUrlInput = document.querySelector("#baseUrlInput");
+      const clearBtn = document.querySelector("#clearBtn");
+      const copyBtn = document.querySelector("#copyBtn");
+      const newBtn = document.querySelector("#newBtn");
+      const lockBtn = document.querySelector("#lockBtn");
+      const result = document.querySelector("#result");
+      const usage = document.querySelector("#usage");
+      const message = document.querySelector("#message");
+      const charCount = document.querySelector("#charCount");
+      const statusBox = document.querySelector("#status");
+      const statusText = document.querySelector("#statusText");
+      const modelText = document.querySelector("#modelText");
+      const historyList = document.querySelector("#historyList");
+      const clearHistoryBtn = document.querySelector("#clearHistoryBtn");
+      const lockScreen = document.querySelector("#lockScreen");
+      const lockForm = document.querySelector("#lockForm");
+      const passwordInput = document.querySelector("#passwordInput");
+      const lockMessage = document.querySelector("#lockMessage");
+
+      let appPassword = sessionStorage.getItem(AUTH_KEY) || "";
+      let configured = false;
+      let authRequired = false;
+      let authenticated = true;
+      let historyEnabled = false;
+
+      function selectedMode() {
+        return document.querySelector("input[name='mode']:checked").value;
+      }
+
+      function setSelectedMode(mode) {
+        document.querySelector(`input[name="mode"][value="${mode}"]`).checked = true;
+      }
+
+      function authHeaders(base = {}) {
+        const headers = { ...base };
+        if (appPassword) headers["X-App-Password"] = appPassword;
+        return headers;
+      }
+
+      function setMessage(text, isError = false) {
+        message.textContent = text;
+        message.classList.toggle("error", isError);
+      }
+
+      function showLock(show, text = "") {
+        lockScreen.hidden = !show;
+        document.querySelector("#appRoot").setAttribute("aria-hidden", String(show));
+        lockMessage.textContent = text;
+        lockBtn.hidden = !authRequired;
+        if (show) {
+          window.setTimeout(() => passwordInput.focus(), 0);
+        }
+      }
+
+      function setBusy(isBusy) {
+        translateBtn.disabled =
+          isBusy || !configured || (authRequired && !authenticated);
+        translateBtn.textContent = isBusy ? "번역 중" : "번역";
+      }
+
+      function formatMode(mode) {
+        return mode === "business" ? "비즈니스" : "격식체";
+      }
+
+      function formatProvider(provider) {
+        const names = {
+          anthropic: "Anthropic",
+          openai: "OpenAI",
+          gemini: "Gemini",
+          "openai-compatible": "호환 API",
+        };
+        return names[provider] || provider || "Provider";
+      }
+
+      function modelPlaceholder(provider) {
+        const placeholders = {
+          anthropic: "claude-sonnet-4-6",
+          openai: "gpt-4o",
+          gemini: "gemini-2.5-flash",
+          "openai-compatible": "제공사 모델명",
+          auto: "비워두면 기본값",
+        };
+        return placeholders[provider] || "모델명";
+      }
+
+      function syncProviderInputs() {
+        modelInput.placeholder = modelPlaceholder(providerInput.value);
+        baseUrlInput.disabled = providerInput.value !== "openai-compatible";
+        if (baseUrlInput.disabled) baseUrlInput.value = "";
+      }
+
+      function formatDate(value) {
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return "";
+        return new Intl.DateTimeFormat("ko-KR", {
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+        }).format(date);
+      }
+
+      function truncate(text, max = 86) {
+        return text.length > max ? `${text.slice(0, max - 1)}...` : text;
+      }
+
+      function clearWorkspace() {
+        sourceText.value = "";
+        result.textContent = "";
+        usage.textContent = "토큰 정보 없음";
+        charCount.textContent = "0 / 12000";
+        setMessage("");
+        sourceText.focus();
+      }
+
+      async function parseJson(response) {
+        const text = await response.text();
+        if (!text) return {};
+        try {
+          return JSON.parse(text);
+        } catch (error) {
+          return { detail: text };
+        }
+      }
+
+      async function checkHealth(showBadPassword = false) {
+        try {
+          const response = await fetch("/api/health", {
+            headers: authHeaders(),
+          });
+          const data = await response.json();
+          authRequired = Boolean(data.auth_required);
+          authenticated = Boolean(data.authenticated);
+          configured = Boolean(data.configured);
+          historyEnabled = Boolean(data.history_enabled);
+
+          statusBox.classList.toggle("ok", configured && authenticated);
+          statusBox.classList.toggle("error", !configured || !authenticated);
+          modelText.textContent = `${data.provider_label || formatProvider(data.provider)} · ${data.model || "모델 미설정"}`;
+          providerInput.value = data.provider || "auto";
+          syncProviderInputs();
+          if (!modelInput.value) modelInput.value = data.model || "";
+
+          if (authRequired && !authenticated) {
+            configured = false;
+            setBusy(false);
+            statusText.textContent = "접속 잠김";
+            showLock(true, showBadPassword ? "비밀번호가 올바르지 않습니다." : "");
+            return;
+          }
+
+          showLock(false);
+          statusText.textContent = configured
+            ? "번역 준비 완료"
+            : data.config_error || "API 키 또는 모델 미설정";
+          setBusy(false);
+          await loadHistory();
+        } catch (error) {
+          configured = false;
+          statusBox.classList.add("error");
+          statusText.textContent = "서버 연결 실패";
+          modelText.textContent = "서버를 실행하세요";
+          setBusy(false);
+        }
+      }
+
+      async function loadHistory() {
+        clearHistoryBtn.disabled = true;
+        if (!historyEnabled || (authRequired && !authenticated)) {
+          historyList.innerHTML =
+            '<div class="empty-history">히스토리가 비활성화되어 있습니다.</div>';
+          return;
+        }
+
+        try {
+          const response = await fetch("/api/history?limit=30", {
+            headers: authHeaders(),
+          });
+          if (response.status === 401) {
+            showLock(true, "비밀번호를 다시 입력하세요.");
+            return;
+          }
+          const data = await response.json();
+          renderHistory(data.items || []);
+        } catch (error) {
+          historyList.innerHTML =
+            '<div class="empty-history">히스토리를 불러오지 못했습니다.</div>';
+        }
+      }
+
+      function renderHistory(items) {
+        clearHistoryBtn.disabled = items.length === 0;
+        if (!items.length) {
+          historyList.innerHTML =
+            '<div class="empty-history">저장된 번역이 없습니다.</div>';
+          return;
+        }
+
+        historyList.replaceChildren(
+          ...items.map((item) => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "history-item";
+            button.dataset.id = item.id;
+
+            const meta = document.createElement("div");
+            meta.className = "history-meta";
+
+            const mode = document.createElement("span");
+            mode.textContent = `${formatProvider(item.provider)} · ${formatMode(item.mode)}`;
+
+            const date = document.createElement("span");
+            date.textContent = formatDate(item.created_at);
+
+            const preview = document.createElement("div");
+            preview.className = "history-preview";
+            preview.textContent = truncate(item.source_text);
+
+            meta.append(mode, date);
+            button.append(meta, preview);
+            button.addEventListener("click", () => {
+              setSelectedMode(item.mode);
+              sourceText.value = item.source_text;
+              result.textContent = item.translation;
+              charCount.textContent = `${sourceText.value.length} / 12000`;
+              usage.textContent =
+                `${formatProvider(item.provider)} / ${item.model || "model"} | ` +
+                `입력 ${item.input_tokens ?? "-"} | ` +
+                `캐시 작성 ${item.cache_creation_input_tokens ?? "-"} | ` +
+                `캐시 읽기 ${item.cache_read_input_tokens ?? "-"} | ` +
+                `출력 ${item.output_tokens ?? "-"}`;
+              setMessage("");
+            });
+            return button;
+          }),
+        );
+      }
+
+      async function translate() {
+        const text = sourceText.value.trim();
+        if (!text) {
+          setMessage("번역할 원문을 입력하세요.", true);
+          sourceText.focus();
+          return;
+        }
+
+        setBusy(true);
+        setMessage("");
+        result.textContent = "";
+        usage.textContent = "요청 중";
+
+        try {
+          const response = await fetch("/api/translate", {
+            method: "POST",
+            headers: authHeaders({ "Content-Type": "application/json" }),
+            body: JSON.stringify({ text, mode: selectedMode() }),
+          });
+          const data = await parseJson(response);
+
+          if (response.status === 401) {
+            sessionStorage.removeItem(AUTH_KEY);
+            appPassword = "";
+            await checkHealth(true);
+            throw new Error("접속 비밀번호를 다시 입력하세요.");
+          }
+
+          if (!response.ok) {
+            throw new Error(data.detail || "번역 요청 실패");
+          }
+
+          result.textContent = data.translation;
+          usage.textContent =
+            `${formatProvider(data.provider)} / ${data.model || "model"} | ` +
+            `입력 ${data.usage.input_tokens ?? "-"} | ` +
+            `캐시 작성 ${data.usage.cache_creation_input_tokens ?? "-"} | ` +
+            `캐시 읽기 ${data.usage.cache_read_input_tokens ?? "-"} | ` +
+            `출력 ${data.usage.output_tokens ?? "-"}`;
+          await loadHistory();
+        } catch (error) {
+          usage.textContent = "토큰 정보 없음";
+          setMessage(error.message, true);
+        } finally {
+          setBusy(false);
+        }
+      }
+
+      sourceText.addEventListener("input", () => {
+        charCount.textContent = `${sourceText.value.length} / 12000`;
+      });
+
+      translateBtn.addEventListener("click", translate);
+      clearBtn.addEventListener("click", clearWorkspace);
+      newBtn.addEventListener("click", clearWorkspace);
+
+      providerInput.addEventListener("change", () => {
+        syncProviderInputs();
+      });
+
+      settingsToggleBtn.addEventListener("click", () => {
+        settingsPanel.hidden = !settingsPanel.hidden;
+        if (!settingsPanel.hidden) apiKeyInput.focus();
+      });
+
+      settingsPanel.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const apiKey = apiKeyInput.value.trim();
+        if (!apiKey) {
+          setMessage("저장할 API 키를 입력하세요.", true);
+          apiKeyInput.focus();
+          return;
+        }
+
+        try {
+          const response = await fetch("/api/settings/provider", {
+            method: "POST",
+            headers: authHeaders({ "Content-Type": "application/json" }),
+            body: JSON.stringify({
+              provider: providerInput.value,
+              api_key: apiKey,
+              model: modelInput.value.trim(),
+              base_url: baseUrlInput.value.trim(),
+            }),
+          });
+          const data = await parseJson(response);
+          if (!response.ok) {
+            throw new Error(data.detail || "API 설정 저장 실패");
+          }
+          apiKeyInput.value = "";
+          settingsPanel.hidden = true;
+          setMessage(".env에 API 설정을 저장했습니다.");
+          await checkHealth();
+        } catch (error) {
+          setMessage(error.message, true);
+        }
+      });
+
+      copyBtn.addEventListener("click", async () => {
+        if (!result.textContent) return;
+        await navigator.clipboard.writeText(result.textContent);
+        setMessage("복사되었습니다.");
+      });
+
+      clearHistoryBtn.addEventListener("click", async () => {
+        clearHistoryBtn.disabled = true;
+        try {
+          const response = await fetch("/api/history", {
+            method: "DELETE",
+            headers: authHeaders(),
+          });
+          if (response.status === 401) {
+            showLock(true, "비밀번호를 다시 입력하세요.");
+            return;
+          }
+          await loadHistory();
+          setMessage("히스토리를 삭제했습니다.");
+        } catch (error) {
+          setMessage("히스토리 삭제에 실패했습니다.", true);
+        }
+      });
+
+      lockBtn.addEventListener("click", () => {
+        sessionStorage.removeItem(AUTH_KEY);
+        appPassword = "";
+        authenticated = false;
+        showLock(true);
+      });
+
+      lockForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        appPassword = passwordInput.value.trim();
+        sessionStorage.setItem(AUTH_KEY, appPassword);
+        await checkHealth(true);
+      });
+
+      syncProviderInputs();
+      checkHealth();
+    </script>
+  </body>
+</html>
